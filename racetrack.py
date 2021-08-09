@@ -26,6 +26,10 @@ def point_dist(p0, p1):
     return ((p0.x - p1.x) ** 2 + (p0.y - p1.y) ** 2) ** 0.5
 
 
+def point_rotate(p):
+    return P(p.y, -p.x)
+
+
 class S:
     def __init__(self, p, v):
         self.p = p
@@ -208,7 +212,7 @@ class RaceTrack:
             n_open_paths = len(self.starts)
             if n_open_paths:
                 if do_print:
-                    print(f'After {n_moves} moves, there are {len(self.starts)} paths to explore...')
+                    print(f'After {n_moves} moves, {len(self.starts)} states/nodes have been reached...')
         if do_print:
             print(f'After {n_moves} moves, the finish line has been reached. '
                   f'These are the {"shortest of the " if consider_length else ""}fastest routes:')
@@ -220,7 +224,7 @@ class RaceTrack:
             moves, points = zip(*reversed(backward_path))
             moves = ''.join([str(move) for move in moves])
             time, length = self.score_path(points)
-            best_routes.append((time, length, moves, points))
+            best_routes.append((time, length, moves, [point_rotate(point) for point in points]))
         best_routes = sorted(best_routes)
         filter_elems = 2 if consider_length else 1
         best_score = best_routes[0][:filter_elems]
@@ -244,7 +248,9 @@ class RaceTrack:
             self.plot_best_routes(self.best_routes, title)
         return self.best_routes
 
-    def plot_best_routes(self, best_routes, title):
+    def plot_best_routes(self, best_routes, title, do_annotate=None):
+        if do_annotate is None:
+            do_annotate = len(best_routes) <= 10
         foreground = 10
         background = 0
         hs = self.half_side
@@ -268,15 +274,16 @@ class RaceTrack:
         ax.add_patch(plt.Rectangle((hs, -plt_hs), margin, 2 * plt_hs, color=wall_col, zorder=background))
         ax.add_patch(plt.Rectangle((-plt_hs, -plt_hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
         ax.add_patch(plt.Rectangle((-plt_hs, hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
-        ax.plot([self.r, hs], [0, 0], linewidth=3, color=wall_col, zorder=background)
-        # ax.plot([self.start_point.x], [self.start_point.y], marker='o', markersize=9, color=wall_col, zorder=background)
+        ax.plot([0, 0], [-self.r, -hs], linewidth=3, color=wall_col, zorder=background)
         for (time, length, moves, points) in best_routes:
             colors = reversed(cm.rainbow(np.linspace(0, 1, len(points) - 1)))
-            for arrow_count, (p0, p1, arrow_color) in enumerate(zip(points[:-1], points[1:], colors)):
+            for arrow_count, (p0, p1, move, arrow_color) in enumerate(zip(points[:-1], points[1:], moves, colors)):
                 arrow_zorder = foreground + arrow_count
                 ax.plot([p0.x], [p0.y], marker='o', markersize=5, color=arrow_color, zorder=arrow_zorder - 2)
-                ax.arrow(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y, color=arrow_color, head_width=0.2, head_length=0.4,
-                         linewidth=2, length_includes_head=True, zorder=arrow_zorder)
+                ax.arrow(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y, color=arrow_color, linewidth=2, zorder=arrow_zorder,
+                                 head_width=0.2, head_length=0.4, length_includes_head=True)
+                if do_annotate:
+                    ax.annotate(move, ((p0.x + p1.x) / 2, (p0.y + p1.y) / 2), zorder=arrow_zorder + 10)
         plt.show()
 
 
