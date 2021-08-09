@@ -320,16 +320,20 @@ class RaceTrack:
         ax.add_patch(plt.Rectangle((-plt_hs, -plt_hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
         ax.add_patch(plt.Rectangle((-plt_hs, hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
         ax.plot([0, 0], [-self.r, -hs], linewidth=3, color=wall_col, zorder=background)
-        for (time, length, moves, points) in routes:
+        legends = []
+        for route_count, (time, length, moves, points) in enumerate(routes, 1):
             colors = reversed(cm.rainbow(np.linspace(0, 1, len(points) - 1)))
-            for arrow_count, (p0, p1, move, arrow_color) in enumerate(zip(points[:-1], points[1:], moves, colors)):
+            for arrow_count, (p0, p1, move, arrow_color) in enumerate(zip(points[:-1], points[1:], moves, colors), 1):
                 arrow_zorder = foreground + arrow_count
                 ax.plot([p0.x], [p0.y], marker='o', markersize=5, color=arrow_color, zorder=arrow_zorder - 2)
-                ax.arrow(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y, color=arrow_color, linewidth=2, zorder=arrow_zorder,
-                                 head_width=0.2, head_length=0.4, length_includes_head=True)
+                arrow = ax.arrow(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y, color=arrow_color, linewidth=2,
+                             zorder=arrow_zorder, head_width=0.2, head_length=0.4, length_includes_head=True)
+                if route_count == 1:
+                    legends.append((arrow, 'move ' + str(arrow_count)))
                 if do_annotate:
-
                     ax.annotate(move, ((p0.x + p1.x) / 2, (p0.y + p1.y) / 2), zorder=arrow_zorder + 10)
+        arrows, labels = zip(*legends)
+        ax.legend(arrows, labels)
         plt.show()
 
 
