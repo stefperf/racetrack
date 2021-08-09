@@ -1,7 +1,7 @@
 # racetrack
 Finding all solutions to Riddler Classic @ https://fivethirtyeight.com/features/can-you-zoom-around-the-race-track/ with an adapted version of the [Dijkstra algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm) where each node of the graph to be navigated is a state including both 2-D position and 2-D velocity.
 
-There are many 322 fastest routes reaching the finish line in the same minimum time. 
+There are many 322 fastest routes reaching the finish line in the same minimum time, considering all path forks and path mergings. Each n-th move is represented with a different color.
 
 ![figure showing all the fastest routes](https://github.com/stefperf/racetrack/blob/main/Fastest_routes.png)
 
