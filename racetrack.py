@@ -288,7 +288,7 @@ class RaceTrack:
             )
         return fastest_routes
 
-    def plot_routes(self, routes, title, do_annotate=None):
+    def plot_routes(self, routes, title, do_annotate=False):
         """
         plot the given routes
         :param routes: sequence of routes [(time, length, <string_of_move_labels>, <list_of_points>)]
@@ -296,8 +296,6 @@ class RaceTrack:
         :param do_annotate: True iff moves should be labelled in the plot
         :return: nothing
         """
-        if do_annotate is None:
-            do_annotate = len(routes) <= 10
         foreground = 10
         background = 0
         hs = self.half_side
@@ -330,6 +328,7 @@ class RaceTrack:
                 ax.arrow(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y, color=arrow_color, linewidth=2, zorder=arrow_zorder,
                                  head_width=0.2, head_length=0.4, length_includes_head=True)
                 if do_annotate:
+
                     ax.annotate(move, ((p0.x + p1.x) / 2, (p0.y + p1.y) / 2), zorder=arrow_zorder + 10)
         plt.show()
 
