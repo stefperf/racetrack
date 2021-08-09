@@ -7,7 +7,7 @@ Considering all path forks and path mergings, there are 322 fastest routes reach
 ![figure showing all the fastest routes](https://github.com/stefperf/racetrack/blob/main/Fastest_routes.png)
 
 
-If we add a secondary goal of minimizing route length, then there are only these 2 optimal routes: 
+If we also add a secondary goal of minimizing route length, then there are only these 2 optimal routes: 
 - 352447988663
 - 352448879663
 
