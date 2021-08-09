@@ -224,21 +224,23 @@ class RaceTrack:
         best_routes = sorted(best_routes)
         filter_elems = 2 if consider_length else 1
         best_score = best_routes[0][:filter_elems]
-        for n, route in enumerate(best_routes, 1):
+        n_best = 0
+        for route in best_routes:
             if route[:filter_elems] > best_score:
                 break
             else:
+                n_best += 1
                 if do_print:
                     (time, length, moves, points) = route
                     print(f'time = {time}, length = {length:.3f}, '
                           f'moves = {moves}, points = {[(p.x, p.y) for p in points]}')
-        self.best_routes = best_routes[:n]
+        self.best_routes = best_routes[:n_best]
         if do_plot:
             (time, length) = self.best_routes[0][:2]
             if consider_length:
-                title = f'The {n} shortest of the fastest routes: time = {time:.3f}, length = {length:.3f}'
+                title = f'The {n_best} shortest of the fastest routes: time = {time:.3f}, length = {length:.3f}'
             else:
-                title = f'The {n} fastest routes: time = {time:.3f}'
+                title = f'The {n_best} fastest routes: time = {time:.3f}'
             self.plot_best_routes(self.best_routes, title)
         return self.best_routes
 
