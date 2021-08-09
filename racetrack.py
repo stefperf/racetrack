@@ -87,7 +87,6 @@ class RaceTrack:
         self.nodes = {self.start_node: A(moves=[''], prevs=[], time=0.)}
         self.starts = set([self.start_node])
         self.ends = set()
-        self.best_routes = []
 
     @functools.lru_cache(maxsize=None)
     def segment_crosses_circle(self, p0, p1):
@@ -224,16 +223,19 @@ class RaceTrack:
             length += fraction_before_finish * point_dist(p0, p1)
         return time, length
 
-    def optimize_route(self, consider_length, do_print=True, do_plot=True):
+    def optimize_route(self, do_print=True, do_plot=True):
         """
         identify and return the best routes [(time, length, <string_of_move_labels>, <list_of_points>)]
         :param consider_length: True iff the min. length should be a secondary optimization criterion, after min. time
         :param do_print: True iff the best routes should be printed
         :param do_plot: True iff the best routes should be plotted
-        :return: the best found routes [(time, length, <string_of_move_labels>, <list_of_points>)]
+        :return: the best routes [(time, length, <string_of_move_labels>, <list_of_points>)], sorted
         """
+        def route2str(time, length, moves, points):
+            return f'time = {time:.3f}, length = {length:.3f}, moves = {moves}, points = {[(p.x, p.y) for p in points]}'
+
         if do_print:
-            print(f'\nFINDING THE {"SHORTEST OF THE " if consider_length else ""}FASTEST ROUTES...')
+            print(f'\nFINDING THE FASTEST ROUTES...')
         n_moves = 0
         while self.starts:
             n_moves += 1
@@ -245,39 +247,48 @@ class RaceTrack:
         backward_paths = []
         for s_end in self.ends:
             backward_paths.extend(self.retrace_paths_back_to_start(s_end))
-        best_routes = []
+        fastest_routes = []
         for backward_path in backward_paths:
             moves, points = zip(*reversed(backward_path))
             moves = ''.join([str(move) for move in moves])
             time, length = self.score_path(points)
-            best_routes.append((time, length, moves, [point_rotate(point) for point in points]))
-        best_routes = sorted(best_routes)
-        filter_elems = 2 if consider_length else 1
-        best_score = best_routes[0][:filter_elems]
-        n_best = 0
-        for route in best_routes:
-            if route[:filter_elems] > best_score:
+            fastest_routes.append((time, length, moves, [point_rotate(point) for point in points]))
+        n_fastest = len(fastest_routes)
+        fastest_routes = sorted(fastest_routes)
+        best_time_length = fastest_routes[0][:2]
+        n_shortest_fastest = 0
+        for route in fastest_routes:
+            if route[:2] > best_time_length:
                 break
             else:
-                n_best += 1
-                if do_print:
-                    (time, length, moves, points) = route
-                    print(f'time = {time}, length = {length:.3f}, '
-                          f'moves = {moves}, points = {[(p.x, p.y) for p in points]}')
-        self.best_routes = best_routes[:n_best]
+                n_shortest_fastest += 1
+        shortest_fastest_routes = fastest_routes[:n_shortest_fastest]
         if do_print:
-            print(f'After {n_moves} moves, the finish line has been reached. '
-                  f'These are the {n_best} {"shortest of the " if consider_length else ""}fastest routes:')
+            print(f'After {n_moves} moves, the finish line has been reached or crossed.')
+            print()
+            print(f'{"These are" if n_fastest > 1 else "This is"} '
+                  f'the {n_fastest} fastest path{"s" if n_fastest > 1 else ""}:')
+            for (time, length, moves, points) in fastest_routes:
+                print(route2str(time, length, moves, points))
+            print()
+            print(f'{"These are" if n_shortest_fastest > 1 else "This is"} '
+                  f'the {n_shortest_fastest} shortest fastest path{"s" if n_shortest_fastest > 1 else ""}:')
+            for (time, length, moves, points) in shortest_fastest_routes:
+                print(route2str(time, length, moves, points))
         if do_plot:
-            (time, length) = self.best_routes[0][:2]
-            if consider_length:
-                title = f'The {n_best} shortest of the fastest routes: time = {time:.3f}, length = {length:.3f}'
-            else:
-                title = f'The {n_best} fastest routes: time = {time:.3f}'
-            self.plot_best_routes(self.best_routes, title)
-        return self.best_routes
+            min_time, min_length = shortest_fastest_routes[0][:2]
+            self.plot_routes(
+                fastest_routes,
+                f'The {n_fastest} fastest route{"s" if n_fastest > 1 else ""}: time = {min_time:.3f}'
+            )
+            self.plot_routes(
+                shortest_fastest_routes,
+                f'The {n_shortest_fastest} shortest fastest route{"s" if n_shortest_fastest > 1 else ""}: '
+                f'time = {min_time:.3f}, length = {min_length:.3f}'
+            )
+        return fastest_routes
 
-    def plot_best_routes(self, routes, title, do_annotate=None):
+    def plot_routes(self, routes, title, do_annotate=None):
         """
         plot the given routes
         :param routes: sequence of routes [(time, length, <string_of_move_labels>, <list_of_points>)]
@@ -324,5 +335,4 @@ class RaceTrack:
 
 
 if __name__ == '__main__':
-    RaceTrack().optimize_route(consider_length=False)
-    RaceTrack().optimize_route(consider_length=True)
+    RaceTrack().optimize_route()
