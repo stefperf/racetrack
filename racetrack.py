@@ -8,29 +8,34 @@ from collections import namedtuple
 from math import atan2, pi
 
 
-P = namedtuple('P', 'x y')
-ACCELERATIONS = {
-    i: P(x, y) for i, (x, y) in enumerate([(x, y) for x in range(-1, 2) for y in range(-1, 2)], 1)
-}
+P = namedtuple('P', 'x y')  # 2-D Point
+
+# to label moves
+ACCELERATIONS = {i: P(x, y) for i, (x, y) in enumerate([(x, y) for x in range(-1, 2) for y in range(-1, 2)], 1)}
 
 
 def calc_angle(x, y):
+    """get angle of polar coordinates from Cartesian coordinates"""
     return (atan2(y, x) + (2 * pi if y < 0 else 0.)) / (2 * pi)
 
 
 def point_sum(p0, p1):
+    """vector sum of two Points"""
     return P(p0.x + p1.x, p0.y + p1.y)
 
 
 def point_dist(p0, p1):
+    """Euclidean distance between two Points"""
     return ((p0.x - p1.x) ** 2 + (p0.y - p1.y) ** 2) ** 0.5
 
 
 def point_rotate(p):
+    """rotate Point by 90% clockwise"""
     return P(p.y, -p.x)
 
 
 class S:
+    """race State = <2-D position: Point, 2-D velocity: Point>"""
     def __init__(self, p, v):
         self.p = p
         self.v = v
@@ -51,6 +56,7 @@ class S:
         return f'S(p={self.p}, v={self.v})'
 
     def get_potential_moves(self):
+        """get all potential next states in a boundless track"""
         potential_moves = {}
         for move, acc in ACCELERATIONS.items():
             v1 = point_sum(self.v, acc)
@@ -59,11 +65,13 @@ class S:
         return potential_moves
 
 
-A = namedtuple('A', 'moves prevs time')
+A = namedtuple('A', 'moves prevs time')  # attributes of a state: prev( State)s, moves leading to it in given time
 
 
 class RaceTrack:
+    """representing a race track and the graph of possible race states to optimize upon"""
     def __init__(self, half_side=7, r=3, start_x=None, accept=None):
+        """init the track and the graph of possible race states"""
         self.half_side = half_side
         self.r = r
         self.r2 = r ** 2
@@ -83,6 +91,7 @@ class RaceTrack:
 
     @functools.lru_cache(maxsize=None)
     def segment_crosses_circle(self, p0, p1):
+        """True iff the segment between the two given Points crosses the circle in two crossing points"""
         if p0.x == p1.x:
             delta = self.r2 - p0.x ** 2
             if delta <= 0.:
@@ -118,6 +127,7 @@ class RaceTrack:
 
     @functools.lru_cache(maxsize=None)
     def arrow_crosses_finish(self, p0, p1):
+        """True iff Point p1 is on or beyond the finish line, but p0 is not"""
         if p1.y < 0:
             return False
         elif p0.y >= 0:
@@ -129,6 +139,12 @@ class RaceTrack:
             return self.r <= x_cross <= self.half_side
 
     def get_admissible_moves(self, s0, accept=None):
+        """
+        If no potential move crosses the finish line, then return:
+            (list of all potential next states within the track boundaries, False)
+        otherwise return:
+            (list of all potential next states within the track boundaries and across the finish line, True)
+        """
         if not accept:
             accept = self.accept
         admissible_moves = {}
@@ -144,20 +160,21 @@ class RaceTrack:
                 admissible_moves[move] = s1
         return admissible_moves, finish_possible
 
-    def angle_improves_cmp(self, s0, s1, cmp_phi0_and_phi1):
+    def angle_compares_ok(self, s0, s1, comparison_function):
+        """True iff the angle improves between the two given states, as measured by the given comparison_function"""
         phi0, phi1 = self.points_to_angles[s0.p], self.points_to_angles[s1.p]
-        return cmp_phi0_and_phi1(phi0, phi1) and phi1 - phi0 < 0.5
+        return comparison_function(phi0, phi1) and phi1 - phi0 < 0.5
 
     def angle_improves(self, s0, s1):
-        return self.angle_improves_cmp(s0, s1, lambda phi0, phi1: phi1 > phi0)
+        """True iff the angle improves between the two given states"""
+        return self.angle_compares_ok(s0, s1, lambda phi0, phi1: phi1 > phi0)
 
     def angle_doesnt_worsen(self, s0, s1):
-        return self.angle_improves_cmp(s0, s1, lambda phi0, phi1: phi1 >= phi0)
-
-    def accept_all(self, s0, s1):
-        return True
+        """True iff the angle does not worsen between the two given states"""
+        return self.angle_compares_ok(s0, s1, lambda phi0, phi1: phi1 >= phi0)
 
     def move_forward(self):
+        """enrich the graph of race states by one move forward from every last reached state"""
         new_starts = set()
         finish_reached = False
         for s0 in self.starts:
@@ -183,6 +200,7 @@ class RaceTrack:
         return finish_reached
 
     def retrace_paths_back_to_start(self, s1):
+        """get all bakward sequences of points from state s1 to the start point"""
         if s1 == self.start_node:
             return [[('', s1.p)]]
         paths = []
@@ -195,6 +213,10 @@ class RaceTrack:
         return paths
 
     def score_path(self, points):
+        """
+        compute the time and the length of a path, given as a sequence of points;
+        for the move crossing the finish line, only the fraction of time and length before crossing is considered
+        """
         time, length = 0., 0.
         for p0, p1 in zip(points[:-1], points[1:]):
             fraction_before_finish = -p0.y / (p1.y - p0.y) if self.arrow_crosses_finish(p0, p1) else 1.
@@ -203,6 +225,13 @@ class RaceTrack:
         return time, length
 
     def optimize_route(self, consider_length, do_print=True, do_plot=True):
+        """
+        identify and return the best routes [(time, length, <string_of_move_labels>, <list_of_points>)]
+        :param consider_length: True iff the min. length should be a secondary optimization criterion, after min. time
+        :param do_print: True iff the best routes should be printed
+        :param do_plot: True iff the best routes should be plotted
+        :return: the best found routes [(time, length, <string_of_move_labels>, <list_of_points>)]
+        """
         if do_print:
             print(f'\nFINDING THE {"SHORTEST OF THE " if consider_length else ""}FASTEST ROUTES...')
         n_moves = 0
@@ -248,9 +277,16 @@ class RaceTrack:
             self.plot_best_routes(self.best_routes, title)
         return self.best_routes
 
-    def plot_best_routes(self, best_routes, title, do_annotate=None):
+    def plot_best_routes(self, routes, title, do_annotate=None):
+        """
+        plot the given routes
+        :param routes: sequence of routes [(time, length, <string_of_move_labels>, <list_of_points>)]
+        :param title: figure title
+        :param do_annotate: True iff moves should be labelled in the plot
+        :return: nothing
+        """
         if do_annotate is None:
-            do_annotate = len(best_routes) <= 10
+            do_annotate = len(routes) <= 10
         foreground = 10
         background = 0
         hs = self.half_side
@@ -275,7 +311,7 @@ class RaceTrack:
         ax.add_patch(plt.Rectangle((-plt_hs, -plt_hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
         ax.add_patch(plt.Rectangle((-plt_hs, hs), 2 * plt_hs,  margin, color=wall_col, zorder=background))
         ax.plot([0, 0], [-self.r, -hs], linewidth=3, color=wall_col, zorder=background)
-        for (time, length, moves, points) in best_routes:
+        for (time, length, moves, points) in routes:
             colors = reversed(cm.rainbow(np.linspace(0, 1, len(points) - 1)))
             for arrow_count, (p0, p1, move, arrow_color) in enumerate(zip(points[:-1], points[1:], moves, colors)):
                 arrow_zorder = foreground + arrow_count
