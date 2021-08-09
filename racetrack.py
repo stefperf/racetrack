@@ -213,9 +213,6 @@ class RaceTrack:
             if n_open_paths:
                 if do_print:
                     print(f'After {n_moves} moves, {len(self.starts)} states/nodes have been reached...')
-        if do_print:
-            print(f'After {n_moves} moves, the finish line has been reached. '
-                  f'These are the {"shortest of the " if consider_length else ""}fastest routes:')
         backward_paths = []
         for s_end in self.ends:
             backward_paths.extend(self.retrace_paths_back_to_start(s_end))
@@ -239,6 +236,9 @@ class RaceTrack:
                     print(f'time = {time}, length = {length:.3f}, '
                           f'moves = {moves}, points = {[(p.x, p.y) for p in points]}')
         self.best_routes = best_routes[:n_best]
+        if do_print:
+            print(f'After {n_moves} moves, the finish line has been reached. '
+                  f'These are the {n_best} {"shortest of the " if consider_length else ""}fastest routes:')
         if do_plot:
             (time, length) = self.best_routes[0][:2]
             if consider_length:
