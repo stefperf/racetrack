@@ -1,3 +1,4 @@
+(Please see racetrack_output.txt for the lengths and point coordinates of these paths)
 352447988663
 352448879663
 352448798663
