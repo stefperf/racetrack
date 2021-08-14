@@ -253,8 +253,15 @@ class RaceTrack:
             moves = ''.join([str(move) for move in moves])
             time, length = self.score_path(points)
             fastest_routes.append((time, length, moves, [point_rotate(point) for point in points]))
-        n_fastest = len(fastest_routes)
         fastest_routes = sorted(fastest_routes)
+        best_time = fastest_routes[0][0]
+        n_fastest = 0
+        for route in fastest_routes:
+            if route[0] > best_time:
+                break
+            else:
+                n_fastest += 1
+        fastest_routes = fastest_routes[:n_fastest]
         best_time_length = fastest_routes[0][:2]
         n_shortest_fastest = 0
         for route in fastest_routes:
